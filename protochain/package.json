@@ -1,0 +1,33 @@
+{
+  "name": "protochain",
+  "version": "1.0.0",
+  "description": "Module 1. A proto-blockchain project.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "compile": "npx tsc",
+    "start": "node ./dist/blockchain.js",
+    "start:dev": "npx nodemon --watch './src/' --exec 'npx ts-node ./src/lib/blockchain.ts' -e ts",
+    "blockchain": "ts-node ./src/server/blockchainServer.ts --run"
+  },
+  "keywords": [],
+  "author": "Tiago Mendes",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/express": "^5.0.1",
+    "@types/jest": "^29.5.14",
+    "@types/morgan": "^1.9.9",
+    "@types/supertest": "^6.0.3",
+    "jest": "^29.7.0",
+    "supertest": "^7.1.0",
+    "ts-jest": "^29.3.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "express": "^5.1.0",
+    "morgan": "^1.10.0"
+  }
+}
