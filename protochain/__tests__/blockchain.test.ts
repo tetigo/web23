@@ -92,4 +92,10 @@ describe("Blockchain Tests", () => {
     const block1: Block | undefined = blockchain.getBlock("7");
     expect(block1).not.toBeDefined();
   });
+
+  test("Should get next block info", () => {
+    const blockchain = new Blockchain();
+    const info = blockchain.getNextBlock();
+    expect(info.index).toEqual(1);
+  });
 });

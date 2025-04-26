@@ -1,5 +1,6 @@
 import sha256 from "crypto-js/sha256";
 import Validation from "./validation";
+import BlockInfo from "./blockInfo";
 
 /**
  * Block class
@@ -10,39 +11,93 @@ export default class Block {
   hash: string;
   previousHash: string;
   data: string;
+  nonce: number;
+  miner: string;
 
   /**
    * Creates a new block
    * @param block The block data
    */
-  // constructor(index: number, previousHash: string, data: string){
   constructor(block?: Block) {
     this.index = block?.index || 0;
     this.timestamp = block?.timestamp || Date.now();
     this.previousHash = block?.previousHash || "";
     this.data = block?.data || "";
-    this.hash = block?.hash || this.getHash();
+    this.nonce = block?.nonce || 0;
+    this.miner = block?.miner || "";
+    this.hash = block?.hash || this.getHash(); //precisa ser a ultima linha do construtor, pois inclui tudo pra gerar hash
   }
 
   getHash(): string {
     return sha256(
-      this.index + this.data + this.timestamp + this.previousHash
+      this.index +
+        this.data +
+        this.timestamp +
+        this.previousHash +
+        this.nonce +
+        this.miner
     ).toString();
   }
 
   /**
+   * Generates a new valid hash for this block with the specified difficulty
+   * @param difficulty The blockchain current difficulty
+   * @param miner The miner wallet address
+   */
+  mine(difficulty: number, miner: string) {
+    this.miner = miner;
+    const prefix = this.getPrefix(difficulty);
+    do {
+      this.nonce++;
+      this.hash = this.getHash();
+    } while (!this.hash.startsWith(prefix));
+  }
+
+  getPrefix(difficulty: number) {
+    let prefix = "";
+    for (let index = 0; index < difficulty + 1; index++) {
+      prefix += "0";
+    }
+    return prefix;
+  }
+
+  /**
    * Validates the block
+   * @param previousHash The previous block hash
+   * @param previousIndex The previous block index
+   * @param difficulty The blockchain current difficulty
    * @returns Returns true if the block is valid
    */
-  isValid(previousHash: string, previousIndex: number): Validation {
+  isValid(
+    previousHash: string,
+    previousIndex: number,
+    difficulty: number
+  ): Validation {
     if (previousIndex !== this.index - 1)
       return new Validation(false, "Invalid Index");
-    if (this.hash !== this.getHash())
-      return new Validation(false, "Invalid Hash");
+
     if (!this.data) return new Validation(false, "Invalid Data");
+
     if (this.timestamp < 1) return new Validation(false, "Invalid Timestamp");
+
     if (this.previousHash !== previousHash)
       return new Validation(false, "Invalid Previous Hash");
+
+    if (!this.nonce || !this.miner) return new Validation(false, "Not mined");
+
+    const prefix = this.getPrefix(difficulty);
+
+    if (this.hash !== this.getHash() || !this.hash.startsWith(prefix))
+      return new Validation(false, "Invalid Hash");
+
     return new Validation();
+  }
+
+  static fromBlockInfo(blockInfo: BlockInfo): Block {
+    const block = new Block();
+    block.index = blockInfo.index;
+    block.previousHash = blockInfo.previousHash;
+    block.data = blockInfo.data;
+    return block;
   }
 }

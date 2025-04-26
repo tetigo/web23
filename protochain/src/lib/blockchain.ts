@@ -1,4 +1,5 @@
 import Block from "./block";
+import BlockInfo from "./blockInfo";
 import Validation from "./validation";
 
 /**
@@ -7,6 +8,8 @@ import Validation from "./validation";
 export default class Blockchain {
   blocks: Block[] = [];
   nextIndex: number = 0;
+  static readonly DIFFICULTY_FACTOR = 5;
+  static readonly MAX_DIFFICULTY = 62;
 
   /**
    *  Creates a new blockchain
@@ -31,9 +34,17 @@ export default class Blockchain {
     return this.blocks.find((b) => b.hash === indexOrHash);
   }
 
+  getDifficulty(): number {
+    return Math.ceil(this.blocks.length / Blockchain.DIFFICULTY_FACTOR);
+  }
+
   addBlock(block: Block): Validation {
     const lastBlock: Block = this.getLastBlock();
-    const validation = block.isValid(lastBlock.hash, lastBlock.index);
+    const validation = block.isValid(
+      lastBlock.hash,
+      lastBlock.index,
+      this.getDifficulty()
+    );
     if (!validation.success)
       return new Validation(false, `Invalid Block: ${validation.message}`);
     this.blocks.push(block);
@@ -47,7 +58,8 @@ export default class Blockchain {
       const previousBlock = this.blocks[i - 1];
       const validation = currentBlock.isValid(
         previousBlock.hash,
-        previousBlock.index
+        previousBlock.index,
+        this.getDifficulty()
       );
       if (!validation.success)
         return new Validation(
@@ -56,5 +68,20 @@ export default class Blockchain {
         );
     }
     return new Validation();
+  }
+
+  getFeePerTx(): number {
+    return 1;
+  }
+
+  getNextBlock(): BlockInfo {
+    return {
+      data: new Date().toString(),
+      difficulty: this.getDifficulty(),
+      previousHash: this.getLastBlock().hash,
+      index: this.blocks.length,
+      feePerTx: this.getFeePerTx(),
+      maxDifficulty: Blockchain.MAX_DIFFICULTY,
+    } as BlockInfo;
   }
 }
