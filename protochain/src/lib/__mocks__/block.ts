@@ -1,3 +1,5 @@
+import BlockInfo from "../blockInfo";
+import Transaction from "../transaction";
 import Validation from "../validation";
 
 /**
@@ -8,7 +10,7 @@ export default class Block {
   timestamp: number;
   hash: string;
   previousHash: string;
-  data: string;
+  transactions: Transaction[];
 
   /**
    * Creates a new mock block
@@ -18,7 +20,9 @@ export default class Block {
     this.index = block?.index || 0;
     this.timestamp = block?.timestamp || Date.now();
     this.previousHash = block?.previousHash || "";
-    this.data = block?.data || "";
+    this.transactions = block?.transactions
+      ? block.transactions.map((tx) => new Transaction(tx))
+      : ([] as Transaction[]);
     this.hash = block?.hash || this.getHash();
   }
 
@@ -38,5 +42,12 @@ export default class Block {
       return new Validation(false, "Invalid mock block");
 
     return new Validation();
+  }
+  static fromBlockInfo(blockInfo: BlockInfo): Block {
+    const block = new Block();
+    block.index = blockInfo.index;
+    block.previousHash = blockInfo.previousHash;
+    block.transactions = blockInfo.transactions;
+    return block;
   }
 }

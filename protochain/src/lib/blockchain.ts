@@ -1,5 +1,8 @@
 import Block from "./block";
 import BlockInfo from "./blockInfo";
+import Transaction from "./transaction";
+import TransactionSearch from "./transactionSearch";
+import TransationType from "./transactionType";
 import Validation from "./validation";
 
 /**
@@ -7,19 +10,27 @@ import Validation from "./validation";
  */
 export default class Blockchain {
   blocks: Block[] = [];
+  mempool: Transaction[];
   nextIndex: number = 0;
   static readonly DIFFICULTY_FACTOR = 5;
+  static readonly TX_PER_BLOCK = 2;
   static readonly MAX_DIFFICULTY = 62;
 
   /**
    *  Creates a new blockchain
    */
   constructor() {
+    this.mempool = [];
     this.blocks = [
       new Block({
         index: this.nextIndex,
         previousHash: "",
-        data: "Genesis Block",
+        transactions: [
+          new Transaction({
+            type: TransationType.FEE,
+            data: "Genesis Block",
+          } as Transaction),
+        ],
       } as Block),
     ];
     this.nextIndex++;
@@ -34,8 +45,51 @@ export default class Blockchain {
     return this.blocks.find((b) => b.hash === indexOrHash);
   }
 
+  getTransaction(hash: string): TransactionSearch {
+    const mempoolIndex = this.mempool.findIndex((tx) => tx.hash === hash);
+    if (mempoolIndex !== -1)
+      return {
+        mempoolIndex,
+        blockIndex: -1,
+        transaction: this.mempool[mempoolIndex],
+      } as TransactionSearch;
+    const blockIndex = this.blocks.findIndex((b) =>
+      b.transactions.some((tx) => tx.hash === hash)
+    );
+    if (blockIndex !== -1)
+      return {
+        blockIndex,
+        transaction: this.blocks[blockIndex].transactions.find(
+          (tx) => tx.hash === hash
+        ),
+      } as TransactionSearch;
+    return {
+      blockIndex: -1,
+      mempoolIndex: -1,
+    } as TransactionSearch;
+  }
+
   getDifficulty(): number {
     return Math.ceil(this.blocks.length / Blockchain.DIFFICULTY_FACTOR);
+  }
+
+  addTransaction(transaction: Transaction): Validation {
+    const validation = transaction.isValid();
+    if (!validation.success) {
+      return new Validation(false, "Invalid tx: " + validation.message);
+    }
+    if (
+      this.blocks.some((b) =>
+        b.transactions.some((tx) => tx.hash === transaction.hash)
+      )
+    ) {
+      return new Validation(false, "Duplicated tx in blockchain");
+    }
+    if (this.mempool.some((tx) => tx.hash === transaction.hash)) {
+      return new Validation(false, "Duplicated tx in mempool");
+    }
+    this.mempool.push(transaction);
+    return new Validation(true, transaction.hash);
   }
 
   addBlock(block: Block): Validation {
@@ -47,9 +101,20 @@ export default class Blockchain {
     );
     if (!validation.success)
       return new Validation(false, `Invalid Block: ${validation.message}`);
+
+    const txs = block.transactions
+      .filter((tx) => tx.type !== TransationType.FEE)
+      .map((tx) => tx.hash);
+    const newMempool = this.mempool.filter((tx) => !txs.includes(tx.hash));
+
+    if (newMempool.length + txs.length !== this.mempool.length) {
+      return new Validation(false, "Invalid tx in block: mempool");
+    }
+    this.mempool = newMempool;
     this.blocks.push(block);
     this.nextIndex++;
-    return new Validation();
+
+    return new Validation(true, block.hash);
   }
 
   isValid(): Validation {
@@ -74,9 +139,12 @@ export default class Blockchain {
     return 1;
   }
 
-  getNextBlock(): BlockInfo {
+  getNextBlock(): BlockInfo | null {
+    if (!this.mempool || !this.mempool.length) {
+      return null;
+    }
     return {
-      data: new Date().toString(),
+      transactions: this.mempool.slice(0, Blockchain.TX_PER_BLOCK),
       difficulty: this.getDifficulty(),
       previousHash: this.getLastBlock().hash,
       index: this.blocks.length,

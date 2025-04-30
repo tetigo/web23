@@ -31,7 +31,12 @@ const config: Config = {
   coverageDirectory: "coverage",
 
   // An array of regexp pattern strings used to skip coverage collection
-  coveragePathIgnorePatterns: ["/node_modules/", "./lib/blockInfo.ts"],
+  coveragePathIgnorePatterns: [
+    "/node_modules/",
+    "./lib/blockInfo.ts",
+    "./lib/transactionType.ts",
+    "./lib/transactionSearch.ts",
+  ],
 
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: "v8",
