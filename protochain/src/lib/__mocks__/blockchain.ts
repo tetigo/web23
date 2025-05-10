@@ -1,6 +1,7 @@
 import Block from "../block";
 import BlockInfo from "../blockInfo";
 import Transaction from "../transaction";
+import TransactionInput from "./transactionInput";
 import TransactionSearch from "../transactionSearch";
 import TransationType from "../transactionType";
 import Validation from "../validation";
@@ -27,7 +28,7 @@ export default class Blockchain {
         transactions: [
           new Transaction({
             type: TransationType.FEE,
-            data: "Genesis Block",
+            txInput: new TransactionInput(),
           } as Transaction),
         ],
         timestamp: Date.now(),
@@ -70,11 +71,11 @@ export default class Blockchain {
     return {
       index: 1,
       previousHash: this.getLastBlock().hash,
-      difficulty: 0,
+      difficulty: 1,
       maxDifficulty: 62,
       feePerTx: this.getFeePerTx(),
       transactions: [
-        new Transaction({ data: new Date().toString() } as Transaction),
+        new Transaction({ txInput: new TransactionInput() } as Transaction),
       ],
     } as BlockInfo;
   }

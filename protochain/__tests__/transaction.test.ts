@@ -1,39 +1,68 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, jest, test } from "@jest/globals";
 import Transaction from "../src/lib/transaction";
 import TransationType from "../src/lib/transactionType";
+import TransactionInput from "../src/lib/transactionInput";
+
+jest.mock("../src/lib/transactionInput");
 
 describe("Transactions Tests", () => {
-  test("should validate - contains default values", () => {
-    const transaction = new Transaction();
-    expect(transaction.type).toEqual(TransationType.REGULAR);
+  test("Should be valid (REGULAR default)", () => {
+    const tx = new Transaction({
+      txInput: new TransactionInput(),
+      to: "carteiraTO",
+    } as Transaction);
+    const valid = tx.isValid();
+    expect(valid.success).toBeTruthy();
   });
-  test("should be valid - contains default specified values", () => {
-    const transaction = new Transaction({
-      data: "tx 1",
+
+  test("Should be valid (not default transaction input)", () => {
+    const tx = new Transaction({
+      to: "test123",
+      txInput: new TransactionInput({ amount: 100 } as TransactionInput),
+    } as Transaction);
+    const valid = tx.isValid();
+    expect(valid.success).toBeTruthy();
+  });
+
+  test("Should NOT be valid (REGULAR default)", () => {
+    const tx = new Transaction({
+      txInput: new TransactionInput(),
+      to: "carteiraTO",
+      type: TransationType.REGULAR,
+      timestamp: Date.now(),
+      hash: "abc",
+    } as Transaction);
+    const valid = tx.isValid();
+    expect(valid.success).toBeFalsy();
+  });
+
+  test("Should be valid (FEE)", () => {
+    const tx = new Transaction({
+      to: "carteiraTO",
       type: TransationType.FEE,
     } as Transaction);
-    expect(transaction.type).toEqual(TransationType.FEE);
-    expect(transaction.data).toEqual("tx 1");
+    tx.txInput = undefined;
+    tx.hash = tx.getHash();
+    const valid = tx.isValid();
+    expect(valid.success).toBeTruthy();
   });
-  test("should be valid - contains default specified data value", () => {
-    const transaction = new Transaction({
-      data: "tx 1",
-      type: TransationType.FEE,
+
+  test("Should NOT be valid (invalid to)", () => {
+    const tx = new Transaction();
+    const valid = tx.isValid();
+    expect(valid.success).toBeFalsy();
+  });
+
+  test("Should NOT be valid (invalid txInput)", () => {
+    const tx = new Transaction({
+      to: "carteiraTO",
+      txInput: new TransactionInput({
+        amount: -10,
+        fromAddress: "carteiraFROM",
+        signature: "abc",
+      } as TransactionInput),
     } as Transaction);
-    const valid = transaction.isValid();
-    expect(valid.success).toEqual(true);
-  });
-  test("should NOT be valid - contains wrong data", () => {
-    const transaction = new Transaction({ data: "test" } as Transaction);
-    transaction.data = "";
-    transaction.hash = transaction.getHash();
-    const validation = transaction.isValid();
-    expect(validation.success).toEqual(false);
-  });
-  test("should NOT validate - invalid hash", () => {
-    const transaction = new Transaction({ data: "test" } as Transaction);
-    transaction.data = "abc";
-    const validation = transaction.isValid();
-    expect(validation.success).toEqual(false);
+    const valid = tx.isValid();
+    expect(valid.success).toBeFalsy();
   });
 });

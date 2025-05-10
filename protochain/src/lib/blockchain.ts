@@ -1,6 +1,7 @@
 import Block from "./block";
 import BlockInfo from "./blockInfo";
 import Transaction from "./transaction";
+import TransactionInput from "./transactionInput";
 import TransactionSearch from "./transactionSearch";
 import TransationType from "./transactionType";
 import Validation from "./validation";
@@ -28,7 +29,7 @@ export default class Blockchain {
         transactions: [
           new Transaction({
             type: TransationType.FEE,
-            data: "Genesis Block",
+            txInput: new TransactionInput(),
           } as Transaction),
         ],
       } as Block),
@@ -50,7 +51,6 @@ export default class Blockchain {
     if (mempoolIndex !== -1)
       return {
         mempoolIndex,
-        blockIndex: -1,
         transaction: this.mempool[mempoolIndex],
       } as TransactionSearch;
     const blockIndex = this.blocks.findIndex((b) =>
@@ -70,10 +70,21 @@ export default class Blockchain {
   }
 
   getDifficulty(): number {
-    return Math.ceil(this.blocks.length / Blockchain.DIFFICULTY_FACTOR);
+    return Math.ceil(this.blocks.length / Blockchain.DIFFICULTY_FACTOR) + 1;
   }
 
   addTransaction(transaction: Transaction): Validation {
+    if (transaction.txInput) {
+      const from = transaction.txInput.fromAddress;
+      const pendingTx = this.mempool
+        .map((tx) => tx.txInput)
+        .filter((txi) => txi!.fromAddress === from);
+      if (pendingTx && pendingTx.length > 0)
+        return new Validation(false, "This wallet has a pending transaction");
+
+      //TODO: validar a origem dos fundos
+    }
+
     const validation = transaction.isValid();
     if (!validation.success) {
       return new Validation(false, "Invalid tx: " + validation.message);
@@ -85,9 +96,7 @@ export default class Blockchain {
     ) {
       return new Validation(false, "Duplicated tx in blockchain");
     }
-    if (this.mempool.some((tx) => tx.hash === transaction.hash)) {
-      return new Validation(false, "Duplicated tx in mempool");
-    }
+
     this.mempool.push(transaction);
     return new Validation(true, transaction.hash);
   }

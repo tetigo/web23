@@ -1,6 +1,7 @@
 import sha256 from "crypto-js/sha256";
 import TransationType from "./transactionType";
 import Validation from "./validation";
+import TransactionInput from "./transactionInput";
 
 /**
  * Transaction class
@@ -9,24 +10,34 @@ export default class Transaction {
   type: TransationType;
   timestamp: number;
   hash: string;
-  data: string;
+  txInput: TransactionInput | undefined;
+  to: string;
 
   constructor(tx?: Transaction) {
     this.type = tx?.type || TransationType.REGULAR;
     this.timestamp = tx?.timestamp || Date.now();
-    this.data = tx?.data || "";
+    this.to = tx?.to || "";
+    if (tx && tx.txInput) this.txInput = new TransactionInput(tx.txInput);
+    else this.txInput = undefined;
     this.hash = tx?.hash || this.getHash();
   }
 
   getHash(): string {
-    return sha256(this.type + this.data + this.timestamp).toString();
+    const from = this.txInput ? this.txInput.getHash() : "";
+    return sha256(this.type + from + this.to + this.timestamp).toString();
   }
 
   isValid(): Validation {
     if (this.hash !== this.getHash())
       return new Validation(false, "Invalid hash");
 
-    if (!this.data) return new Validation(false, "Invalid data");
+    if (!this.to) return new Validation(false, "Invalid to address");
+
+    if (this.txInput) {
+      const validation = this.txInput.isValid();
+      if (!validation.success)
+        return new Validation(false, `Invalid tx: ${validation.message}`);
+    }
 
     return new Validation();
   }
